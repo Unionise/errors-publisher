@@ -84,8 +84,6 @@ case object HtmlErrorFormat extends ErrorFormat {
 
 object Errors {
 
-  // TODO: move recipients and email `from` to config file
-
   case class ErrorMessage(
       idempotencyKey: Option[String],
       title: String,
@@ -96,6 +94,37 @@ object Errors {
       errorTime: DateTime
   )
 
+  /**
+    * Create error message for sending it to kafka based on some erroneous event.
+    *
+    * @param subject subject of message
+    * @param body message body
+    * @param tags tags related to occurred erroneous event
+    * @return
+    */
+  def kafkaMessage(subject: String,
+                   body: JsObject,
+                   priority: TicketPriority.Value = TicketPriority.Medium,
+                   tags: Seq[String] = Seq.empty): ErrorMessage = {
+    ErrorMessage(
+      idempotencyKey = None,
+      title = subject,
+      body = body,
+      tags = tags,
+      priority = priority,
+      errorCode = None,
+      errorTime = DateTime.now()
+    )
+  }
+
+  /**
+    * Create error message for sending it to kafka based on occurred exception.
+    *
+    * @param subject subject of message
+    * @param throwable occurred exception
+    * @param tags tags related to occurred error
+    * @return
+    */
   def kafkaMessageForThrowable(subject: String, throwable: Throwable, tags: Seq[String]): ErrorMessage = ErrorMessage(
     None,
     s"$subject - ${subjectForThrowable(throwable)}",
@@ -106,6 +135,13 @@ object Errors {
     DateTime.now()
   )
 
+  /**
+    * Create error message for sending it to kafka based on occurred exception during some HTTP request.
+    *
+    * @param request failed request
+    * @param throwable occurred exception
+    * @return constructed error message
+    */
   def kafkaMessageForThrowableInRequest(request: RequestHeader, throwable: Throwable): ErrorMessage = ErrorMessage(
     None,
     subjectForThrowableInRequest(request, throwable),
@@ -116,6 +152,15 @@ object Errors {
     DateTime.now()
   )
 
+  /**
+    * Create email based on occurred exception during some HTTP request.
+    *
+    * @param recipients recipients of the email
+    * @param from email of sender
+    * @param request failed request
+    * @param throwable occurred exception
+    * @return composed email
+    */
   def emailForThrowableInRequest(recipients: Seq[String], from: String, request: RequestHeader, throwable: Throwable): Email = {
 
     Email(
@@ -179,9 +224,9 @@ object Errors {
 
   private val dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss ZZZ")
 
-  def dateToString(dateTime: DateTime): String = dateTimeFormatter.print(dateTime)
+  private def dateToString(dateTime: DateTime): String = dateTimeFormatter.print(dateTime)
 
-  def parsePriority(maybePriority: Option[Int]): TicketPriority.Value = maybePriority match {
+  private def parsePriority(maybePriority: Option[Int]): TicketPriority.Value = maybePriority match {
     case Some(priority) =>
       TicketPriority.fromValue(priority) match {
         case TicketPriority.ErroneousValue(_) => TicketPriority.Low
