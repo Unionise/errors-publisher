@@ -44,7 +44,7 @@ class ErrorProcessor @Inject()(
   }
 
   private def processErrorThroughEmail(request: RequestHeader, exception: Throwable): Future[Unit] = {
-    if (request.host.startsWith("localhost")) {
+    if (request.host.startsWith("localhost") && configuration.get[Boolean]("errorsPublisher.disabledOnLocalhost")) {
       Future.successful(())
     } else {
       Try {
@@ -52,6 +52,9 @@ class ErrorProcessor @Inject()(
           val recipients = configuration.get[Seq[String]]("errorsPublisher.mailer.recipients")
           val from = configuration.get[String]("errorsPublisher.mailer.from")
           val emailMessage = Errors.emailForThrowableInRequest(recipients, from, request, exception)
+
+          logger.trace(s"Send error through email. Recipients: $recipients, from: $from. Message: $emailMessage")
+
           mailerClient.send(emailMessage)
         }
       } match {

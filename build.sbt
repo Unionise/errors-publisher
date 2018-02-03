@@ -5,7 +5,7 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala).
     inThisBuild(List(
       organization := "com.kupal",
       scalaVersion := "2.12.4",
-      version      := "1.0.2"
+      version      := "1.0.3"
     )),
     name := "errors-publisher",
     scalaSource in Compile := baseDirectory.value / "src/main/scala",
