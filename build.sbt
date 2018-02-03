@@ -5,7 +5,7 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala).
     inThisBuild(List(
       organization := "com.kupal",
       scalaVersion := "2.12.4",
-      version      := "1.0.0"
+      version      := "1.0.1"
     )),
     name := "errors-publisher",
     scalaSource in Compile := baseDirectory.value / "src/main/scala",
@@ -14,6 +14,8 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala).
     publishTo := Some(Resolver.file("file",  new File( "../errors-publisher-repository" ))),
 
     libraryDependencies += playMailer,
+    libraryDependencies += guice,
+    libraryDependencies += kafka,
     libraryDependencies += scalaTest % Test
   )
 
