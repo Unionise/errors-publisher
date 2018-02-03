@@ -84,10 +84,9 @@ case object HtmlErrorFormat extends ErrorFormat {
 
 object Errors {
 
-  // TODO: move serviceId, recipients and email `from` to config file
+  // TODO: move recipients and email `from` to config file
 
   case class ErrorMessage(
-      serviceId: String,
       idempotencyKey: Option[String],
       title: String,
       body: JsValue,
@@ -97,8 +96,7 @@ object Errors {
       errorTime: DateTime
   )
 
-  def kafkaMessageForThrowable(serviceId: String, subject: String, throwable: Throwable, tags: Seq[String]): ErrorMessage = ErrorMessage(
-    serviceId,
+  def kafkaMessageForThrowable(subject: String, throwable: Throwable, tags: Seq[String]): ErrorMessage = ErrorMessage(
     None,
     s"$subject - ${subjectForThrowable(throwable)}",
     Json.toJson(bodyForThrowable(throwable, HtmlErrorFormat)),
@@ -108,8 +106,7 @@ object Errors {
     DateTime.now()
   )
 
-  def kafkaMessageForThrowableInRequest(serviceId: String, request: RequestHeader, throwable: Throwable): ErrorMessage = ErrorMessage(
-    serviceId,
+  def kafkaMessageForThrowableInRequest(request: RequestHeader, throwable: Throwable): ErrorMessage = ErrorMessage(
     None,
     subjectForThrowableInRequest(request, throwable),
     Json.toJson(bodyForThrowableInRequest(request, throwable, HtmlErrorFormat)),
@@ -197,7 +194,6 @@ object Errors {
   implicit val DateTimeWrites: Writes[DateTime] = (o: DateTime) => Json.toJson(dateTimeFormatter.print(o))
 
   implicit val Writes: Writes[ErrorMessage] = (
-    (JsPath \ "serviceId").write[String] and
     (JsPath \ "idempotencyKey").writeNullable[String] and
     (JsPath \ "title").write[String] and
     (JsPath \ "body").write[JsValue] and
