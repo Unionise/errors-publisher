@@ -98,18 +98,22 @@ object Errors {
     * Create error message for sending it to kafka based on some erroneous event.
     *
     * @param subject subject of message
-    * @param body message body
+    * @param bodyParts message body parts
     * @param tags tags related to occurred erroneous event
     * @return
     */
   def kafkaMessage(subject: String,
-                   body: JsObject,
                    priority: TicketPriority.Value = TicketPriority.Medium,
-                   tags: Seq[String] = Seq.empty): ErrorMessage = {
+                   tags: Seq[String] = Seq.empty)
+                  (bodyParts: (String, String)*): ErrorMessage = {
+    val bodyContent = bodyParts.map { case (key, value) =>
+      s"$key: $value"
+    }.mkString("\n")
+
     ErrorMessage(
       idempotencyKey = None,
       title = subject,
-      body = body,
+      body = Json.toJson(bodyContent),
       tags = tags,
       priority = priority,
       errorCode = None,
@@ -176,12 +180,12 @@ object Errors {
 
   private def subjectForThrowable(throwable: Throwable) = throwable.getMessage.replaceAll("[\r\n\t]", " ")
 
-  private def formatBody(body: String, format: ErrorFormat) =
+  private def formatBody(body: String, format: ErrorFormat): String =
     body
       .replaceAll("[\r\n]", format.lineSeparator)
       .replaceAll("[\t]", format.shift)
 
-  private def bodyForThrowable(throwable: Throwable, format: ErrorFormat) = {
+  private def bodyForThrowable(throwable: Throwable, format: ErrorFormat): String = {
     val threadsStatus = allThreadsStackTraces(format)
     val stackTrace = ExceptionUtils.getStackTrace(throwable)
 
