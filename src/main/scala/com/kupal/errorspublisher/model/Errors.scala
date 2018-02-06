@@ -104,14 +104,14 @@ object Errors {
     */
   def kafkaMessage(subject: String,
                    priority: TicketPriority.Value = TicketPriority.Medium,
-                   tags: Seq[String] = Seq.empty)
+                   tags: Seq[String] = Seq.empty, idempotencyKey: Option[String] = None)
                   (bodyParts: (String, String)*): ErrorMessage = {
     val bodyContent = bodyParts.map { case (key, value) =>
       s"$key: $value"
     }.mkString("\n")
 
     ErrorMessage(
-      idempotencyKey = None,
+      idempotencyKey = idempotencyKey,
       title = subject,
       body = Json.toJson(bodyContent),
       tags = tags,
@@ -129,14 +129,14 @@ object Errors {
     * @param tags tags related to occurred error
     * @return
     */
-  def kafkaMessageForThrowable(subject: String, throwable: Throwable, tags: Seq[String]): ErrorMessage = ErrorMessage(
-    None,
-    s"$subject - ${subjectForThrowable(throwable)}",
-    Json.toJson(bodyForThrowable(throwable, HtmlErrorFormat)),
-    tags,
-    TicketPriority.Medium,
-    None,
-    DateTime.now()
+  def kafkaMessageForThrowable(subject: String, throwable: Throwable, tags: Seq[String], idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
+    idempotencyKey = idempotencyKey,
+    title = s"$subject - ${subjectForThrowable(throwable)}",
+    body = Json.toJson(bodyForThrowable(throwable, HtmlErrorFormat)),
+    tags = tags,
+    priority = TicketPriority.Medium,
+    errorCode = None,
+    errorTime = DateTime.now()
   )
 
   /**
@@ -146,14 +146,14 @@ object Errors {
     * @param throwable occurred exception
     * @return constructed error message
     */
-  def kafkaMessageForThrowableInRequest(request: RequestHeader, throwable: Throwable): ErrorMessage = ErrorMessage(
-    None,
-    subjectForThrowableInRequest(request, throwable),
-    Json.toJson(bodyForThrowableInRequest(request, throwable, HtmlErrorFormat)),
-    Seq("request-exception"),
-    TicketPriority.Medium,
-    None,
-    DateTime.now()
+  def kafkaMessageForThrowableInRequest(request: RequestHeader, throwable: Throwable, idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
+    idempotencyKey = idempotencyKey,
+    title = subjectForThrowableInRequest(request, throwable),
+    body = Json.toJson(bodyForThrowableInRequest(request, throwable, HtmlErrorFormat)),
+    tags = Seq("request-exception"),
+    priority = TicketPriority.Medium,
+    errorCode = None,
+    errorTime = DateTime.now()
   )
 
   /**
@@ -166,7 +166,6 @@ object Errors {
     * @return composed email
     */
   def emailForThrowableInRequest(recipients: Seq[String], from: String, request: RequestHeader, throwable: Throwable): Email = {
-
     Email(
       subject = subjectForThrowableInRequest(request, throwable),
       from = from,
