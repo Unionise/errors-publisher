@@ -22,16 +22,16 @@ class ErrorProcessor @Inject()(
 
   val logger = play.api.Logger(this.getClass)
 
-  private def processErrorThroughKafka(request: RequestHeader, exception: Throwable): Future[Unit] = {
+  private def processErrorThroughKafka(request: RequestHeader, exception: Throwable, idempotencyKey: Option[String] = None): Future[Unit] = {
     errorSender.sendError(
-      Errors.kafkaMessageForThrowableInRequest(request, exception)
+      Errors.kafkaMessageForThrowableInRequest(request, exception, idempotencyKey)
     )
   }
 
-  def processRequestError(request: RequestHeader, exception: Throwable): Future[Unit] = {
+  def processRequestError(request: RequestHeader, exception: Throwable, idempotencyKey: Option[String] = None): Future[Unit] = {
     if (configuration.get[Boolean]("errorsPublisher.enabled")) {
       configuration.get[String]("errorsPublisher.mode") match {
-        case "kafka" => processErrorThroughKafka(request, exception).transformWith {
+        case "kafka" => processErrorThroughKafka(request, exception, idempotencyKey).transformWith {
           case Success(_) => Future.successful(())
           case Failure(_) => processErrorThroughEmail(request, exception)
         }
