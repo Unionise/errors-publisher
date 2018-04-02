@@ -4,15 +4,16 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.google.inject.{Inject, Singleton}
+import com.kupal.errorspublisher.helpers.Logging
 import org.apache.kafka.clients.producer.{KafkaProducer, Producer, ProducerConfig, ProducerRecord}
 import play.api.Configuration
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class MessageSender @Inject() (configuration: Configuration) {
+class MessageSender @Inject() (configuration: Configuration) extends Logging {
 
   private var producerOpt: Option[Producer[String, JsValue]] = None
 
@@ -26,6 +27,8 @@ class MessageSender @Inject() (configuration: Configuration) {
     props.put(ProducerConfig.CLIENT_ID_CONFIG, serviceId)
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "com.kupal.errorspublisher.kafka.serializers.JsValueSerializer")
+
+    logger.trace(s"Producer created. Properties: $props")
 
     new KafkaProducer[String, JsValue](props)
   }
@@ -45,6 +48,8 @@ class MessageSender @Inject() (configuration: Configuration) {
     }
 
     val topic = configuration.get[String](topicNameKey)
+
+    logger.trace(s"Going to send to topic '$topic' message \n${Json.prettyPrint(message)}")
 
     val record = new ProducerRecord[String, JsValue](topic, message)
 
