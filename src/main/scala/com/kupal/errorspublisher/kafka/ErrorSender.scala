@@ -12,13 +12,20 @@ import scala.concurrent.Future
 class ErrorSender @Inject() (sender: MessageSender, configuration: Configuration) extends Logging {
 
   private val serviceId: String = configuration.get[String]("errorsPublisher.serviceId")
+  private val errorPublishingEnabled = configuration.get[Boolean]("errorsPublisher.enabled")
+  private val inKafkaMode = configuration.get[String]("errorsPublisher.mode") == "kafka"
+
   logger.trace(s"Error sender '$serviceId' created.")
 
   def sendError(error: ErrorMessage): Future[Unit] = {
-    sender.send(
-      "errorsPublisher.kafka.channels.errors.topic",
-      Json.toJson(error).as[JsObject] + ("serviceId" -> Json.toJson(serviceId))
-    )
+    if (errorPublishingEnabled && inKafkaMode) {
+      sender.send(
+        "errorsPublisher.kafka.channels.errors.topic",
+        Json.toJson(error).as[JsObject] + ("serviceId" -> Json.toJson(serviceId))
+      )
+    } else {
+      Future.successful(())
+    }
   }
 
 }
