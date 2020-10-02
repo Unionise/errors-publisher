@@ -103,7 +103,7 @@ object Errors {
     * @return
     */
   @deprecated("Use createKafkaMessage method instead", since = "1.1.1")
-  def kafkaMessageOld(subject: String,
+  def kafkaMessage(subject: String,
                    priority: TicketPriority.Value = TicketPriority.Medium,
                    tags: Seq[String] = Seq.empty, idempotencyKey: Option[String] = None)
                   (bodyParts: (String, String)*): ErrorMessage = {
