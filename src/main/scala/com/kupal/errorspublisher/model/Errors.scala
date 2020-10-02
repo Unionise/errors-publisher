@@ -102,7 +102,8 @@ object Errors {
     * @param tags tags related to occurred erroneous event
     * @return
     */
-  def kafkaMessage(subject: String,
+  @deprecated("Use createKafkaMessage method instead", since = "1.1.1")
+  def kafkaMessageOld(subject: String,
                    priority: TicketPriority.Value = TicketPriority.Medium,
                    tags: Seq[String] = Seq.empty, idempotencyKey: Option[String] = None)
                   (bodyParts: (String, String)*): ErrorMessage = {
@@ -114,6 +115,22 @@ object Errors {
       idempotencyKey = idempotencyKey,
       title = subject,
       body = Json.toJson(bodyContent),
+      tags = tags,
+      priority = priority,
+      errorCode = None,
+      errorTime = DateTime.now()
+    )
+  }
+
+  def createKafkaMessage(subject: String,
+                   priority: TicketPriority.Value = TicketPriority.Medium,
+                   tags: Seq[String] = Seq.empty,
+                   idempotencyKey: Option[String] = None,
+                   body: JsValue = JsString("")): ErrorMessage = {
+    ErrorMessage(
+      idempotencyKey = idempotencyKey,
+      title = subject,
+      body = body,
       tags = tags,
       priority = priority,
       errorCode = None,
