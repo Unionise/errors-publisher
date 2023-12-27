@@ -8,7 +8,7 @@ import play.api.libs.mailer.Email
 import play.api.mvc.RequestHeader
 import play.libs.exception.ExceptionUtils
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.MapHasAsScala
 
 object TicketStatus extends BaseEnum[Int] {
   case object Open extends TicketStatus.Value {
