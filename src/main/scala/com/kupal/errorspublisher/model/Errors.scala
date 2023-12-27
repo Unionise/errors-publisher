@@ -1,12 +1,12 @@
 package com.kupal.errorspublisher.model
 
-import org.apache.commons.lang3.exception.ExceptionUtils
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.libs.mailer.Email
 import play.api.mvc.RequestHeader
+import play.libs.exception.ExceptionUtils
 
 import scala.collection.JavaConverters._
 
