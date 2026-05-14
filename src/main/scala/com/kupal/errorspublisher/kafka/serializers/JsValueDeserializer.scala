@@ -10,7 +10,7 @@ import play.api.libs.json.{JsValue, Json}
 class JsValueDeserializer extends Deserializer[JsValue] {
   private val encoding = "UTF8"
 
-  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {
+  override def configure(configs: util.Map[String, ?], isKey: Boolean): Unit = {
     // Do nothing
   }
 

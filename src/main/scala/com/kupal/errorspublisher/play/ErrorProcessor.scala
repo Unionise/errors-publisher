@@ -6,9 +6,9 @@ import com.kupal.errorspublisher.kafka.{ErrorSender, MessageSender}
 import com.kupal.errorspublisher.model.Errors
 import play.api.Configuration
 import play.api.libs.mailer.MailerClient
-import play.api.mvc._
+import play.api.mvc.*
 
-import scala.concurrent._
+import scala.concurrent.*
 import scala.util.{Failure, Success, Try}
 
 @Singleton

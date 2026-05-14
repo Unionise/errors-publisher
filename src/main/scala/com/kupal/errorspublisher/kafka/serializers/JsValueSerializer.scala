@@ -15,7 +15,7 @@ class JsValueSerializer extends Serializer[JsValue] {
     try {
       opData.map(_.toString.getBytes(encoding)).orNull
     } catch {
-      case e: UnsupportedEncodingException =>
+      case _: UnsupportedEncodingException =>
         throw new SerializationException("Error when serializing JsValue (toString) to Array[Byte] due to unsupported encoding " + encoding)
     }
   }
@@ -24,7 +24,7 @@ class JsValueSerializer extends Serializer[JsValue] {
     // nothing to do
   }
 
-  override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {
+  override def configure(configs: util.Map[String, ?], isKey: Boolean): Unit = {
     // Do nothing
   }
 }

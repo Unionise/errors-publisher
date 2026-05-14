@@ -1,54 +1,49 @@
 package com.kupal.errorspublisher.model
 
+import com.kupal.errorspublisher.helpers.JsonValueEnum
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import play.api.libs.json.*
+import play.api.libs.functional.syntax.*
 import play.api.libs.mailer.Email
 import play.api.mvc.RequestHeader
 import play.libs.exception.ExceptionUtils
 
 import scala.jdk.CollectionConverters.MapHasAsScala
 
-object TicketStatus extends BaseEnum[Int] {
-  case object Open extends TicketStatus.Value {
-    override def value: Int = 2
-  }
+enum TicketStatus(val value: Int) extends JsonValueEnum[Int]:
+  case Open extends TicketStatus(2)
+  case Pending extends TicketStatus(3)
+  case Resolved extends TicketStatus(4)
+  case Closed extends TicketStatus(5)
 
-  case object Pending extends TicketStatus.Value {
-    override def value: Int = 3
-  }
+  case ErroneousValue(raw: Int) extends TicketStatus(raw)
 
-  case object Resolved extends TicketStatus.Value {
-    override def value: Int = 4
-  }
+object TicketStatus:
+  val knownValues: Seq[TicketStatus] =
+    Seq(Open, Pending, Resolved, Closed)
 
-  case object Closed extends TicketStatus.Value {
-    override def value: Int = 5
-  }
+  def fromValue(value: Int): TicketStatus =
+    knownValues.find(_.value == value).getOrElse(ErroneousValue(value))
 
-  def values = Seq(Open, Pending, Resolved, Closed)
-}
+  given Format[TicketStatus] =
+    JsonValueEnum.format[Int, TicketStatus](fromValue)
 
-object TicketPriority extends BaseEnum[Int] {
-  case object Low extends TicketPriority.Value {
-    override def value: Int = 1
-  }
+enum TicketPriority(val value: Int) extends JsonValueEnum[Int]:
+  case Low extends TicketPriority(1)
+  case Medium extends TicketPriority(2)
+  case High extends TicketPriority(3)
+  case Urgent extends TicketPriority(4)
 
-  case object Medium extends TicketPriority.Value {
-    override def value: Int = 2
-  }
+  case ErroneousValue(raw: Int) extends TicketPriority(raw)
 
-  case object High extends TicketPriority.Value {
-    override def value: Int = 3
-  }
+object TicketPriority:
+  val knownValues: Seq[TicketPriority] = Seq(Low, Medium, High, Urgent)
 
-  case object Urgent extends TicketPriority.Value {
-    override def value: Int = 4
-  }
+  def fromValue(value: Int): TicketPriority =
+    knownValues.find(_.value == value).getOrElse(ErroneousValue(value))
 
-  def values = Seq(Low, Medium, High, Urgent)
-}
+  given Format[TicketPriority] = JsonValueEnum.format[Int, TicketPriority](fromValue)
 
 trait ErrorFormat {
   def lineSeparator: String
@@ -89,44 +84,30 @@ object Errors {
       title: String,
       body: JsValue,
       tags: Seq[String],
-      priority: TicketPriority.Value,
+      priority: TicketPriority,
       errorCode: Option[String],
-      errorTime: DateTime
-  )
+      errorTime: DateTime)
 
-  /**
-    * Create error message for sending it to kafka based on some erroneous event.
+  /** Create error message for sending it to kafka based on some erroneous event.
     *
-    * @param subject subject of message
-    * @param bodyParts message body parts
-    * @param tags tags related to occurred erroneous event
-    * @return
+    * @param subject
+    *   subject of message
+    * @param priority
+    *   priority of message, default value is Medium
+    * @param tags
+    *   tags related to occurred erroneous event
+    * @param idempotencyKey
+    *   idempotency key for message, default value is None
+    * @param body
+    *   body of message, default value is empty string
     */
-  @deprecated("Use createKafkaMessage method instead", since = "1.1.1")
-  def kafkaMessage(subject: String,
-                   priority: TicketPriority.Value = TicketPriority.Medium,
-                   tags: Seq[String] = Seq.empty, idempotencyKey: Option[String] = None)
-                  (bodyParts: (String, String)*): ErrorMessage = {
-    val bodyContent = bodyParts.map { case (key, value) =>
-      s"$key: $value"
-    }.mkString("\n")
 
-    ErrorMessage(
-      idempotencyKey = idempotencyKey,
-      title = subject,
-      body = Json.toJson(bodyContent),
-      tags = tags,
-      priority = priority,
-      errorCode = None,
-      errorTime = DateTime.now()
-    )
-  }
-
-  def createKafkaMessage(subject: String,
-                   priority: TicketPriority.Value = TicketPriority.Medium,
-                   tags: Seq[String] = Seq.empty,
-                   idempotencyKey: Option[String] = None,
-                   body: JsValue = JsString("")): ErrorMessage = {
+  def createKafkaMessage(
+      subject: String,
+      priority: TicketPriority = TicketPriority.Medium,
+      tags: Seq[String] = Seq.empty,
+      idempotencyKey: Option[String] = None,
+      body: JsValue = JsString("")): ErrorMessage =
     ErrorMessage(
       idempotencyKey = idempotencyKey,
       title = subject,
@@ -136,17 +117,22 @@ object Errors {
       errorCode = None,
       errorTime = DateTime.now()
     )
-  }
 
-  /**
-    * Create error message for sending it to kafka based on occurred exception.
+  /** Create error message for sending it to kafka based on occurred exception.
     *
-    * @param subject subject of message
-    * @param throwable occurred exception
-    * @param tags tags related to occurred error
+    * @param subject
+    *   subject of message
+    * @param throwable
+    *   occurred exception
+    * @param tags
+    *   tags related to occurred error
     * @return
     */
-  def kafkaMessageForThrowable(subject: String, throwable: Throwable, tags: Seq[String], idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
+  def kafkaMessageForThrowable(
+      subject: String,
+      throwable: Throwable,
+      tags: Seq[String],
+      idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
     idempotencyKey = idempotencyKey,
     title = s"$subject - ${subjectForThrowable(throwable)}",
     body = Json.toJson(bodyForThrowable(throwable, HtmlErrorFormat)),
@@ -156,14 +142,19 @@ object Errors {
     errorTime = DateTime.now()
   )
 
-  /**
-    * Create error message for sending it to kafka based on occurred exception during some HTTP request.
+  /** Create error message for sending it to kafka based on occurred exception during some HTTP request.
     *
-    * @param request failed request
-    * @param throwable occurred exception
-    * @return constructed error message
+    * @param request
+    *   failed request
+    * @param throwable
+    *   occurred exception
+    * @return
+    *   constructed error message
     */
-  def kafkaMessageForThrowableInRequest(request: RequestHeader, throwable: Throwable, idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
+  def kafkaMessageForThrowableInRequest(
+      request: RequestHeader,
+      throwable: Throwable,
+      idempotencyKey: Option[String] = None): ErrorMessage = ErrorMessage(
     idempotencyKey = idempotencyKey,
     title = subjectForThrowableInRequest(request, throwable),
     body = Json.toJson(bodyForThrowableInRequest(request, throwable, HtmlErrorFormat)),
@@ -173,23 +164,30 @@ object Errors {
     errorTime = DateTime.now()
   )
 
-  /**
-    * Create email based on occurred exception during some HTTP request.
+  /** Create email based on occurred exception during some HTTP request.
     *
-    * @param recipients recipients of the email
-    * @param from email of sender
-    * @param request failed request
-    * @param throwable occurred exception
-    * @return composed email
+    * @param recipients
+    *   recipients of the email
+    * @param from
+    *   email of sender
+    * @param request
+    *   failed request
+    * @param throwable
+    *   occurred exception
+    * @return
+    *   composed email
     */
-  def emailForThrowableInRequest(recipients: Seq[String], from: String, request: RequestHeader, throwable: Throwable): Email = {
+  def emailForThrowableInRequest(
+      recipients: Seq[String],
+      from: String,
+      request: RequestHeader,
+      throwable: Throwable): Email =
     Email(
       subject = subjectForThrowableInRequest(request, throwable),
       from = from,
       to = recipients,
       bodyText = Some(bodyForThrowableInRequest(request, throwable, EmailErrorFormat))
     )
-  }
 
   private def subjectForThrowableInRequest(request: RequestHeader, throwable: Throwable) =
     s"[${request.host}] ${subjectForThrowable(throwable)}"
@@ -207,14 +205,13 @@ object Errors {
 
     val body =
       s"""Message:
-        |${throwable.getMessage}
-        |
-        |Stack trace:
-        |$stackTrace
-        |
-        |Other threads status:
-        |$threadsStatus"""
-      .stripMargin
+         |${throwable.getMessage}
+         |
+         |Stack trace:
+         |$stackTrace
+         |
+         |Other threads status:
+         |$threadsStatus""".stripMargin
 
     formatBody(body, format)
   }
@@ -224,9 +221,8 @@ object Errors {
 
     val body =
       s"""$throwableBody
-        |
-        |Request label: ${requestLabel(request)}"""
-      .stripMargin
+         |
+         |Request label: ${requestLabel(request)}""".stripMargin
 
     formatBody(body, format)
   }
@@ -246,11 +242,11 @@ object Errors {
 
   private def dateToString(dateTime: DateTime): String = dateTimeFormatter.print(dateTime)
 
-  private def parsePriority(maybePriority: Option[Int]): TicketPriority.Value = maybePriority match {
+  private def parsePriority(maybePriority: Option[Int]): TicketPriority = maybePriority match {
     case Some(priority) =>
       TicketPriority.fromValue(priority) match {
         case TicketPriority.ErroneousValue(_) => TicketPriority.Low
-        case parsedPriority => parsedPriority
+        case parsedPriority                   => parsedPriority
       }
 
     case None => TicketPriority.Low
@@ -260,12 +256,23 @@ object Errors {
 
   implicit val Writes: Writes[ErrorMessage] = (
     (JsPath \ "idempotencyKey").writeNullable[String] and
-    (JsPath \ "title").write[String] and
-    (JsPath \ "body").write[JsValue] and
-    (JsPath \ "tags").write[Seq[String]] and
-    (JsPath \ "priority").write[TicketPriority.Value] and
-    (JsPath \ "errorCode").writeNullable[String] and
-    (JsPath \ "errorTime").write[DateTime]
-  )(unlift(ErrorMessage.unapply))
+      (JsPath \ "title").write[String] and
+      (JsPath \ "body").write[JsValue] and
+      (JsPath \ "tags").write[Seq[String]] and
+      (JsPath \ "priority").write[TicketPriority] and
+      (JsPath \ "errorCode").writeNullable[String] and
+      (JsPath \ "errorTime").write[DateTime]
+  ) { errorMessage =>
+    (
+      errorMessage.idempotencyKey,
+      errorMessage.title,
+      errorMessage.body,
+      errorMessage.tags,
+      errorMessage.priority,
+      errorMessage.errorCode,
+      errorMessage.errorTime
+    )
+
+  }
 
 }
